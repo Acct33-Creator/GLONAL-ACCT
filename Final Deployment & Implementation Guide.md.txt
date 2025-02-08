@@ -1,0 +1,66 @@
+# Final Deployment & Implementation Guide
+
+## Overview
+
+This guide explains how to deploy and interact with the wrapped token bridge system. The project consists of several smart contracts that work together to ensure a secure 1:1 peg between tokens locked on Chain 138 and wrapped tokens minted on Polygon. The key contracts are:
+
+- **TokenLocker.sol**
+  Accepts ERC20 tokens from users via a `transferFrom()` mechanism, locks them securely, logs lock events, and provides an emergency withdrawal mechanism when paused.
+
+- **WrappedToken.sol**
+  Represents the wrapped token on Polygon. It mints wrapped tokens corresponding 1:1 with the locked tokens (minus a configurable fee) and integrates an optional zkBridge interface for alternative bridging.
+
+- **BridgeOracle.sol**
+  Acts as the oracle (akin to a Chainlink oracle) that monitors lock events and triggers the minting of wrapped tokens by calling the mint function on WrappedToken.sol.
+
+- **IZkBridge.sol**
+  An interface defining the external zkBridge function for optional integration with an off-chain zero-knowledge bridging service.
+
+## Deployment Steps
+
+1. **Prepare Your Environment**
+   - Install a Solidity development framework such as [Hardhat](https://hardhat.org/) or [Truffle](https://www.trufflesuite.com/).
+   - Configure network settings for Chain 138 and Polygon.
+   - Install the required OpenZeppelin contracts using:
+
+         ```
+
+     npm install @openzeppelin/contracts
+          ```
+
+2. **Compile the Contracts**
+   - Use your framework’s compile command. For example, with Hardhat:
+
+         ```
+
+     npx hardhat compile
+
+          ```
+
+3. **Deploy the Contracts**
+   - **TokenLocker.sol**
+     Deploy this contract on Chain 138 by providing the address of the ERC20 token to lock.
+   - **WrappedToken.sol**
+     Deploy on Polygon by passing in the address of the deployed TokenLocker contract.
+   - **BridgeOracle.sol**
+     Deploy on the network that handles the bridging logic, providing the addresses for both TokenLocker and WrappedToken.
+   - Use deployment scripts or your framework's console ensuring your deploying account holds enough funds and the correct roles are set.
+
+4. **Post-Deployment Configuration**
+   - Grant the `MINTER_ROLE` on WrappedToken.sol to the BridgeOracle contract so that it can mint wrapped tokens.
+   - Configure the fee settings by using the `setFeePercent` and `setFeeReceiver` functions on WrappedToken.sol.
+   - Optionally enable the zkBridge mode by calling `setZkBridgeMode(true)` on WrappedToken.sol if external zkBridge functionality is required.
+
+5. **Interacting with the System**
+   - **Locking Tokens:**
+     Users call the `lockTokens(amount)` function on TokenLocker.sol to lock their ERC20 tokens. This action emits a `TokenLocked` event for tracking.
+   - **Minting Wrapped Tokens:**
+     Upon verification of locked tokens, the BridgeOracle contract calls `processBridge(user, amount)`, triggering the minting on WrappedToken.sol.
+   - **Emergency Operations:**
+     In case of an issue, admins can pause the system by calling the `pause()` function on all contracts. When the contracts are paused, the `emergencyWithdraw()` function on TokenLocker.sol can be used by an admin to recover the locked tokens.
+   - **Optional zkBridge Actions:**
+     If the zkBridge mode is enabled, the `bridgeViaZkBridge()` function on WrappedToken.sol can be utilized to transfer tokens via an external zkBridge.
+
+## Summary
+
+This system ensures a secure and transparent process where every token locked on Chain 138 directly corresponds to a minted wrapped token on Polygon. Follow this guide to deploy, configure, and interact with your smart contracts effectively, ensuring robust operations and seamless token bridging.
